@@ -1,10 +1,8 @@
-﻿using System;
-using System.Web.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SimpleCQRS;
 
 namespace CQRSGui.Controllers
 {
-    [HandleError]
     public class HomeController : Controller
     {
         private FakeBus _bus;
@@ -57,6 +55,13 @@ namespace CQRSGui.Controllers
             return RedirectToAction("Index");
         }
 
+        public ActionResult Deactivate(Guid id)
+        {
+            ViewData.Model = _readmodel.GetInventoryItemDetails(id);
+            return View();
+        }
+
+        [HttpPost]
         public ActionResult Deactivate(Guid id, int version)
         {
             _bus.Send(new DeactivateInventoryItem(id, version));
@@ -86,6 +91,19 @@ namespace CQRSGui.Controllers
         public ActionResult Remove(Guid id, int number, int version)
         {
             _bus.Send(new RemoveItemsFromInventory(id, number, version));
+            return RedirectToAction("Index");
+        }
+
+        public ActionResult ChangeMaxQty(Guid id)
+        {
+            ViewData.Model = _readmodel.GetInventoryItemDetails(id);
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult ChangeMaxQty(Guid id, int number, int version)
+        {
+            _bus.Send(new ChangeMaxQty(id, number, version));
             return RedirectToAction("Index");
         }
     }

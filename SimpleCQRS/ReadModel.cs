@@ -13,13 +13,15 @@ namespace SimpleCQRS
     {
         public Guid Id;
         public string Name;
+        public int MaxQty;
         public int CurrentCount;
         public int Version;
 
-        public InventoryItemDetailsDto(Guid id, string name, int currentCount, int version)
+        public InventoryItemDetailsDto(Guid id, string name, int maxQty, int currentCount, int version)
         {
             Id = id;
             Name = name;
+            MaxQty = maxQty;
             CurrentCount = currentCount;
             Version = version;
         }
@@ -41,26 +43,26 @@ namespace SimpleCQRS
     {
         public void Handle(InventoryItemCreated message)
         {
-            BullShitDatabase.list.Add(new InventoryItemListDto(message.Id, message.Name));
+            FakeDatabase.list.Add(new InventoryItemListDto(message.Id, message.Name));
         }
 
         public void Handle(InventoryItemRenamed message)
         {
-            var item = BullShitDatabase.list.Find(x => x.Id == message.Id);
+            var item = FakeDatabase.list.Find(x => x.Id == message.Id);
             item.Name = message.NewName;
         }
 
         public void Handle(InventoryItemDeactivated message)
         {
-            BullShitDatabase.list.RemoveAll(x => x.Id == message.Id);
+            FakeDatabase.list.RemoveAll(x => x.Id == message.Id);
         }
     }
 
-    public class InvenotryItemDetailView : Handles<InventoryItemCreated>, Handles<InventoryItemDeactivated>, Handles<InventoryItemRenamed>, Handles<ItemsRemovedFromInventory>, Handles<ItemsCheckedInToInventory>
+    public class InventoryItemDetailView : Handles<InventoryItemCreated>, Handles<InventoryItemDeactivated>, Handles<InventoryItemRenamed>, Handles<ItemsRemovedFromInventory>, Handles<ItemsCheckedInToInventory>, Handles<MaxQtyChanged>
     {
         public void Handle(InventoryItemCreated message)
         {
-            BullShitDatabase.details.Add(message.Id, new InventoryItemDetailsDto(message.Id, message.Name, 0,0));
+            FakeDatabase.details.Add(message.Id, new InventoryItemDetailsDto(message.Id, message.Name, message.MaxQty, 0, 0));
         }
 
         public void Handle(InventoryItemRenamed message)
@@ -74,7 +76,7 @@ namespace SimpleCQRS
         {
             InventoryItemDetailsDto d;
 
-            if(!BullShitDatabase.details.TryGetValue(id, out d))
+            if (!FakeDatabase.details.TryGetValue(id, out d))
             {
                 throw new InvalidOperationException("did not find the original inventory this shouldnt happen");
             }
@@ -98,7 +100,14 @@ namespace SimpleCQRS
 
         public void Handle(InventoryItemDeactivated message)
         {
-            BullShitDatabase.details.Remove(message.Id);
+            FakeDatabase.details.Remove(message.Id);
+        }
+
+        public void Handle(MaxQtyChanged message)
+        {
+            InventoryItemDetailsDto d = GetDetailsItem(message.Id);
+            d.MaxQty = message.NewMaxQty;
+            d.Version = message.Version;
         }
     }
 
@@ -106,18 +115,18 @@ namespace SimpleCQRS
     {
         public IEnumerable<InventoryItemListDto> GetInventoryItems()
         {
-            return BullShitDatabase.list;
+            return FakeDatabase.list;
         }
 
         public InventoryItemDetailsDto GetInventoryItemDetails(Guid id)
         {
-            return BullShitDatabase.details[id];
+            return FakeDatabase.details[id];
         }
     }
 
-    public static class BullShitDatabase
+    internal class FakeDatabase
     {
-        public static Dictionary<Guid, InventoryItemDetailsDto> details = new Dictionary<Guid,InventoryItemDetailsDto>();
+        public static Dictionary<Guid, InventoryItemDetailsDto> details = new Dictionary<Guid, InventoryItemDetailsDto>();
         public static List<InventoryItemListDto> list = new List<InventoryItemListDto>();
     }
 }
